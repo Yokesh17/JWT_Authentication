@@ -29,6 +29,16 @@ async def user(user: user_dependancy, db: db_dependancy):
     return {'User' : user}
 
 
+@app.get("/test")
+def deployed():
+    return "deployed and working fine"
+
+
+
+
+
+
+
 
 
 
