@@ -6,9 +6,13 @@ from typing import Annotated
 from sqlalchemy.orm import Session
 import auth
 from auth import get_current_user
+import pythonAnywhere
+import pg
 
 app = FastAPI()
 app.include_router(auth.router)
+app.include_router(pythonAnywhere.router)
+app.include_router(pg.router)
 
 models.Base.metadata.create_all(bind=engine)
 
