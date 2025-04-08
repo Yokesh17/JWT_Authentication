@@ -57,7 +57,7 @@ async def login_for_access_token(form_data: CreateUserRequest, db: db_dependancy
     user = authenticate_user(form_data.username, form_data.password, db)
     if user.get("status") == "failure" or user.get("status") == "error":
         return user
-    token_expires = timedelta(minutes=180)
+    token_expires = timedelta(minutes=100)
     token = create_access_token(user["username"], user["id"], token_expires)
 
     return {'access_token': token, 'token_type': 'bearer'}
@@ -93,6 +93,13 @@ async def validate_token(token: Optional[str] = Header(None)):
     
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        expire_time = payload.get('exp')
+        if expire_time:
+            exp_datetime = datetime.fromtimestamp(expire_time, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S%z")
+            current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S%z")
+            print(exp_datetime,current_time)
+            if current_time >= exp_datetime:
+                return {"status": "failure", "message": "Token has expired"}
         username: str = payload.get('sub')
         user_id: int = payload.get('id')
         if username is None or user_id is None:
