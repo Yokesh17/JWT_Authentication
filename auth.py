@@ -7,23 +7,25 @@ from starlette import status
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
-from superbase import get_db_connection, execute_query
+from superbase import get_db_connection, execute_query, algorithm, secret_key
 
 router = APIRouter(prefix='/auth', tags=['auth'])   
 
-SECRET_KEY = '3213d8b8908c6224acad88f034b3a39eb46cdd3d40ae817a26beb930a1870353'
-ALGORITHM = 'HS256'
+SECRET_KEY = secret_key
+ALGORITHM = algorithm
 
 bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
-oauth2_bearer = OAuth2PasswordBearer(tokenUrl='auth/token')
+# oauth2_bearer = OAuth2PasswordBearer(tokenUrl='auth/token')
 
 class CreateUserRequest(BaseModel):
     username: str
     password: str
 
 class Token(BaseModel):
-    access_token: str
-    token_type: str
+    access_token: Optional[str] = None
+    token_type: Optional[str] = None
+    status: Optional[str] = None
+    message: Optional[str] = None
 
 db_dependancy = Annotated[object, Depends(get_db_connection)]
 
@@ -31,14 +33,14 @@ db_dependancy = Annotated[object, Depends(get_db_connection)]
 async def create_user(db: db_dependancy, create_user_request: CreateUserRequest):
     try:
         # Check if user already exists
-        db.execute("SELECT id FROM users WHERE username = %s", (create_user_request.username,))
+        db.execute("SELECT id FROM public.users WHERE username = %s", (create_user_request.username,))
         if db.fetchone():
-            return {"status" : "error", "detail" : "Username already registered"}
+            return {"status" : "failure", "detail" : "Username already registered"}
         
         # Insert new user
         hashed_password = bcrypt_context.hash(create_user_request.password)
         db.execute(
-            "INSERT INTO users (username, hashed_password) VALUES (%s, %s) RETURNING id",
+            "INSERT INTO public.users (username, password) VALUES (%s, %s) RETURNING id",
             (create_user_request.username, hashed_password)
         )
         user_id = db.fetchone()["id"]
@@ -50,10 +52,10 @@ async def create_user(db: db_dependancy, create_user_request: CreateUserRequest)
     except Exception as e:
         return {"status" : "error" , "message" : str(e)}
 
-@router.post('/token', response_model=Token)
-async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: db_dependancy):
+@router.post('/token',response_model=Token, response_model_exclude_none=True)
+async def login_for_access_token(form_data: CreateUserRequest, db: db_dependancy):
     user = authenticate_user(form_data.username, form_data.password, db)
-    if user["status"]=="failure":
+    if user.get("status") == "failure" or user.get("status") == "error":
         return user
     token_expires = timedelta(minutes=180)
     token = create_access_token(user["username"], user["id"], token_expires)
@@ -61,11 +63,11 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
     return {'access_token': token, 'token_type': 'bearer'}
 
 def authenticate_user(username: str, password: str, db : db_dependancy):
-    db.execute("SELECT id, username, hashed_password FROM users WHERE username = %s", (username,))
+    db.execute("SELECT id, username, password FROM users WHERE username = %s", (username,))
     user = db.fetchone()
     if not user:
         return {"status" : "failure" , "message" : "user not found"}
-    if not bcrypt_context.verify(password, user["hashed_password"]):
+    if not bcrypt_context.verify(password, user["password"]):
         return {"status" : "failure", "message" : "invalid credentials"} 
     return user
 
@@ -102,4 +104,7 @@ async def validate_token(token: Optional[str] = Header(None)):
         return {"status": "failure", "message": str(e)}
 
 
-
+# Working model
+@router.get("/secure-token")
+def secure_with_token(token: str = Depends(validate_token)):
+    return {"message": "Verified!", "your_token": token}

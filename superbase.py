@@ -16,6 +16,8 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
+secret_key = os.getenv("SECRET_KEY")
+algorithm = os.getenv("ALGORITHM")
 
 def get_db_connection() -> Generator:
     connection = None
@@ -42,7 +44,6 @@ def get_cursor():
         connection = psycopg2.connect(user=DB_USER,password=DB_PASSWORD,host=DB_HOST,port=DB_PORT,dbname=DB_NAME)
         cursor = connection.cursor(cursor_factory=RealDictCursor)
         yield cursor
-        connection.commit()
     except Exception as e:
         if connection:
             connection.rollback()
