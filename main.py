@@ -28,7 +28,7 @@ app.add_middleware(
 
 @app.get("/test")
 def deployed():
-    return auth.oauth2_bearer
+    return "success"
 
 
 

@@ -55,7 +55,7 @@ async def login_for_access_token(form_data: CreateUserRequest, db: db_dependancy
     token_expires = timedelta(minutes=100)
     token = create_access_token(user["username"], user["id"], token_expires)
 
-    return {'status' : 'success','access_token': token, 'token_type': 'bearer'}
+    return {'status' : 'success','message' : 'Login success','access_token': token, 'token_type': 'bearer'}
 
 def authenticate_user(username: str, password: str, db : db_dependancy):
     try:
