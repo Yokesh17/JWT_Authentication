@@ -52,35 +52,35 @@ def get_cursor():
         if connection:
             connection.close()
 
-def get_datas(cursor,query):
+async def get_datas(cursor,query):
     try:
         cursor.execute(query)
         return cursor.fetchall()
     except Exception as e:
         raise e
     
-def get_data(cursor,query):
+async def get_data(cursor,query):
     try:
         cursor.execute(query)
         return cursor.fetchone()
     except Exception as e:
         raise e
 
-def execute_query(cursor, query, params=None):
+async def execute_query(cursor, query, params=None):
     try:
         cursor.execute(query, params or ())
         return cursor.fetchall()
     except Exception as e:
         raise e
 
-def update(cursor,query):
+async def update(cursor,query):
     try:
         cursor.execute(query)
         return
     except Exception as e:
         raise e
     
-def return_update(cursor,query):
+async def return_update(cursor,query):
     try:
         cursor.execute(query)
         return cursor.fetchone()

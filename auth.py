@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
 from superbase import get_db_connection, execute_query, get_data, return_update ,algorithm, secret_key
+from auth_checks import validate_user
 
 router = APIRouter(prefix='/auth', tags=['auth'])   
 
@@ -18,9 +19,15 @@ bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 # oauth2_bearer = OAuth2PasswordBearer(tokenUrl='auth/token')
 
 class CreateUserRequest(BaseModel):
+    email : str
     username: str
     password: str
+    confirm_password : str
 
+class LoginUser(BaseModel):
+    username: str
+    password: str
+    
 class Token(BaseModel):
     access_token: Optional[str] = None
     token_type: Optional[str] = None
@@ -29,17 +36,15 @@ class Token(BaseModel):
 
 db_dependancy = Annotated[object, Depends(get_db_connection)]
 
-@router.post('/', status_code=status.HTTP_201_CREATED)
-async def create_user(db: db_dependancy, create_user_request: CreateUserRequest):
+@router.post('/register', status_code=status.HTTP_201_CREATED)
+async def create_user(db: db_dependancy, payload: CreateUserRequest):
     try:
-        # Check if user already exists
-        user = get_data(db, f"SELECT id FROM public.users WHERE username = '{create_user_request.username}'; ")
-        if user:
-            return {"status" : "failure", "detail" : "Username already registered"}
+        checks = await validate_user(payload, db)
+        if checks['status'] in ('failure','error'): return checks
         
         # Insert new user
-        hashed_password = bcrypt_context.hash(create_user_request.password)
-        user_id = return_update(db, f"INSERT INTO public.users (username, password) VALUES ('{create_user_request.username}', '{hashed_password}') RETURNING id")
+        hashed_password = bcrypt_context.hash(payload.password)
+        user_id = await return_update(db, f"INSERT INTO public.users (username, password, email) VALUES ('{payload.username}', '{hashed_password}','{payload.email}') RETURNING id")
     
         db.connection.commit()
         
@@ -48,8 +53,8 @@ async def create_user(db: db_dependancy, create_user_request: CreateUserRequest)
         return {"status" : "error" , "message" : str(e)}
 
 @router.post('/login',response_model=Token, response_model_exclude_none=True)
-async def login_for_access_token(form_data: CreateUserRequest, db: db_dependancy):
-    user = authenticate_user(form_data.username, form_data.password, db)
+async def login_for_access_token(form_data: LoginUser, db: db_dependancy):
+    user = await authenticate_user(form_data.username, form_data.password, db)
     if user.get("status") == "failure" or user.get("status") == "error":
         return user
     token_expires = timedelta(minutes=100)
@@ -57,9 +62,9 @@ async def login_for_access_token(form_data: CreateUserRequest, db: db_dependancy
 
     return {'status' : 'success','message' : 'Login success','access_token': token, 'token_type': 'bearer'}
 
-def authenticate_user(username: str, password: str, db : db_dependancy):
+async def authenticate_user(username: str, password: str, db ):
     try:
-        user = get_data(db, f"SELECT id, username, password FROM users WHERE username = '{username}'; ")
+        user = await get_data(db, f"SELECT id, username, password FROM users WHERE username = '{username}'; ")
         if not user:
             return {"status" : "failure" , "message" : "user not found"}
         if not bcrypt_context.verify(password, user["password"]):
