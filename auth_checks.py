@@ -35,7 +35,7 @@ async def check_user(username,db):
 
 async def check_email(email,db):
     if is_valid_email(email):
-        email = await get_data(db, f"SELECT id FROM public.users WHERE username = '{email}'; ")
+        email = await get_data(db, f"SELECT id FROM public.users WHERE email = '{email}'; ")
         if email: return {"status" : "failure", "message" : "Email already registered"}
     else:
         return {"status" : "failure" , "message": "Invalid email"}
