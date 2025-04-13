@@ -47,7 +47,7 @@ async def create_user(db: db_dependancy, create_user_request: CreateUserRequest)
     except Exception as e:
         return {"status" : "error" , "message" : str(e)}
 
-@router.post('/token',response_model=Token, response_model_exclude_none=True)
+@router.post('/login',response_model=Token, response_model_exclude_none=True)
 async def login_for_access_token(form_data: CreateUserRequest, db: db_dependancy):
     user = authenticate_user(form_data.username, form_data.password, db)
     if user.get("status") == "failure" or user.get("status") == "error":
@@ -55,7 +55,7 @@ async def login_for_access_token(form_data: CreateUserRequest, db: db_dependancy
     token_expires = timedelta(minutes=100)
     token = create_access_token(user["username"], user["id"], token_expires)
 
-    return {'access_token': token, 'token_type': 'bearer'}
+    return {'status' : 'success','access_token': token, 'token_type': 'bearer'}
 
 def authenticate_user(username: str, password: str, db : db_dependancy):
     try:
