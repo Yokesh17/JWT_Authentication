@@ -5,12 +5,12 @@ from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 import auth
 from auth import get_current_user
-import pg
+import sql
 from superbase import get_db_connection
 
 app = FastAPI()
 app.include_router(auth.router)
-app.include_router(pg.router)
+app.include_router(sql.router)
 
 db_dependancy = Annotated[object, Depends(get_db_connection)]
 user_dependancy = Annotated[dict, Depends(get_current_user)]
