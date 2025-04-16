@@ -7,10 +7,10 @@ from starlette import status
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
-from superbase import get_db_connection, execute_query, get_data, return_update ,algorithm, secret_key
+from sql import get_db_connection, execute_query, get_data, update ,algorithm, secret_key
 from auth_checks import validate_user
 
-router = APIRouter(prefix='/auth', tags=['auth'])   
+router = APIRouter(prefix='/auth', tags=['auth'])
 
 SECRET_KEY = secret_key
 ALGORITHM = algorithm
@@ -27,7 +27,7 @@ class CreateUserRequest(BaseModel):
 class LoginUser(BaseModel):
     username: str
     password: str
-    
+
 class Token(BaseModel):
     access_token: Optional[str] = None
     token_type: Optional[str] = None
@@ -41,14 +41,15 @@ async def create_user(db: db_dependancy, payload: CreateUserRequest):
     try:
         checks = await validate_user(payload, db)
         if checks['status'] in ('failure','error'): return checks
-        
+
         # Insert new user
         hashed_password = bcrypt_context.hash(payload.password)
-        user_id = await return_update(db, f"INSERT INTO public.users (username, password, email) VALUES ('{payload.username}', '{hashed_password}','{payload.email}') RETURNING id")
-    
+        #public.users - pg table name
+        await update(db, f"INSERT INTO users (username, password, email) VALUES ('{payload.username}', '{hashed_password}','{payload.email}')")
+
         db.connection.commit()
-        
-        return {"status": "success","message": "User created successfully", "user_id": user_id['id']}
+
+        return {"status": "success","message": "User created successfully"}
     except Exception as e:
         return {"status" : "error" , "message" : str(e)}
 
@@ -68,7 +69,7 @@ async def authenticate_user(username: str, password: str, db ):
         if not user:
             return {"status" : "failure" , "message" : "user not found"}
         if not bcrypt_context.verify(password, user["password"]):
-            return {"status" : "failure", "message" : "invalid credentials"} 
+            return {"status" : "failure", "message" : "invalid credentials"}
         return user
     except Exception as e:
         return {"status" : "error", "message" : str(e)}
@@ -82,17 +83,17 @@ def create_access_token(username: str, user_id: int, expires_delta: timedelta):
 async def get_current_user(token: Optional[str] = Header(None)):
     result = await validate_token(token)
     return result
-    
+
 
 # New function to validate token passed directly
 async def validate_token(token: Optional[str] = Header(None)):
     if token is None:
         return {"status" : "failure", "message" : "Token is missing"}
-    
+
     # Remove 'Bearer ' prefix if present
     if token.startswith("Bearer "):
         token = token.replace("Bearer ", "")
-    
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         expire_time = payload.get('exp')
@@ -117,3 +118,6 @@ async def validate_token(token: Optional[str] = Header(None)):
 @router.get("/secure-token")
 def secure_with_token(token: str = Depends(validate_token)):
     return {"message": "Verified!", "your_token": token}
+
+
+

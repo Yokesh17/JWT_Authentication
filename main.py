@@ -6,11 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 import auth
 from auth import get_current_user
 import sql
-from superbase import get_db_connection
+from sql import get_db_connection
+import test
 
 app = FastAPI()
 app.include_router(auth.router)
 app.include_router(sql.router)
+app.include_router(test.router)
 
 db_dependancy = Annotated[object, Depends(get_db_connection)]
 user_dependancy = Annotated[dict, Depends(get_current_user)]
@@ -29,32 +31,3 @@ app.add_middleware(
 @app.get("/test")
 def deployed():
     return "success"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

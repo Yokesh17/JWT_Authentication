@@ -27,15 +27,15 @@ async def validate_user(p,db):
 
 
 async def check_user(username,db):
-    user = await get_data(db, f"SELECT id FROM public.users WHERE username = '{username}'; ")
+    user = await get_data(db, f"SELECT id FROM users WHERE username = '{username}'; ")
     if user: return {"status" : "failure", "message" : "Username already registered"}
-    
+
     return {'status': 'success'}
 
 
 async def check_email(email,db):
     if is_valid_email(email):
-        email = await get_data(db, f"SELECT id FROM public.users WHERE email = '{email}'; ")
+        email = await get_data(db, f"SELECT id FROM users WHERE email = '{email}'; ")
         if email: return {"status" : "failure", "message" : "Email already registered"}
     else:
         return {"status" : "failure" , "message": "Invalid email"}
@@ -59,7 +59,7 @@ def validate_password(password, confirm_password):
         return {"status": "failure", "message": "Password must contain at least one number."}
     if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
         return {"status": "failure", "message": "Password must contain at least one special character."}
-    
+
     return {"status": "success"}
 
 

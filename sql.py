@@ -14,7 +14,15 @@ HOST = os.getenv("SQL_HOST")
 PASSWORD = os.getenv("SQL_PASSWORD")
 DATABASE = os.getenv("SQL_DATABASE")
 
-router = APIRouter(prefix='/sql', tags=['sql']) 
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
+secret_key = os.getenv("SECRET_KEY")
+algorithm = os.getenv("ALGORITHM")
+
+router = APIRouter(prefix='/sql', tags=['sql'])
 
 def nowd():
     return arrow.now('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss')
@@ -59,7 +67,7 @@ async def get_datas(cursor,query):
         return cursor.fetchall()
     except Exception as e:
         raise e
-    
+
 async def get_data(cursor,query):
     try:
         cursor.execute(query)
@@ -80,7 +88,7 @@ async def update(cursor,query):
         return
     except Exception as e:
         raise e
-    
+
 async def return_update(cursor,query):
     try:
         cursor.execute(query)
