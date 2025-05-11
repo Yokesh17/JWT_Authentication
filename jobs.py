@@ -43,7 +43,7 @@ def validate_proxy(proxy):
             "http": f"http://{proxy}",
             "https": f"http://{proxy}",
         }
-        response = requests.get(test_url, proxies=proxies, timeout=2)
+        response = requests.get(test_url, proxies=proxies, timeout=5)
         if response.status_code == 200:
             print(f"Working proxy: {proxy}")
             return True
