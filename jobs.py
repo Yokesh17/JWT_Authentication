@@ -95,10 +95,16 @@ async def search_jobs(
         
         # Get the jobs using the selected proxy
         jobs = get_jobs(search_term, location, results_wanted, proxy)
-         # Convert DataFrame and handle non-JSON compliant values
-        df = pd.DataFrame(jobs)
+        df = jobs
+        #  # Convert DataFrame and handle non-JSON compliant values
+        # print(jobs)
+        # # Flatten nested list if it's 3D
+        # if isinstance(jobs, list) and len(jobs) == 1 and isinstance(jobs[0], list):
+        #     jobs = jobs[0]
+        # df = pd.DataFrame(jobs)
         df = df.replace([np.inf, -np.inf], np.nan)  # Replace infinity with NaN
         df = df.fillna(0)  # Replace NaN with 0 or another appropriate value
+        df = df.reset_index(drop=True)
         
         # Return the filtered results as a list of dictionaries
         return df[['id', 'date_posted', 'title', 'company', 'location', 'job_url', 'min_amount', 'max_amount']].to_dict(orient='records')
