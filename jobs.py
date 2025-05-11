@@ -129,9 +129,9 @@ def update_proxies():
         print(f"Error updating proxies: {e}")
 
 # Run the proxy update when FastAPI app starts
-@app.on_event("startup")
-async def on_startup():
-    update_proxies()
+# @app.on_event("startup")
+# async def on_startup():
+#     update_proxies()
 
 # Optional: Retry logic if a proxy fails
 def get_jobs_with_retry(search_term: str, location: str, results_wanted: int, max_retries: int = 3):
