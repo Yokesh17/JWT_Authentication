@@ -8,11 +8,13 @@ from auth import get_current_user
 import sql
 from sql import get_db_connection
 import test
+import jobs
 
 app = FastAPI()
 app.include_router(auth.router)
 app.include_router(sql.router)
 app.include_router(test.router)
+app.include_router(jobs.app)
 
 db_dependancy = Annotated[object, Depends(get_db_connection)]
 user_dependancy = Annotated[dict, Depends(get_current_user)]
