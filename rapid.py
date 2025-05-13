@@ -2,6 +2,12 @@ from fastapi import FastAPI, Depends, HTTPException, APIRouter
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from datetime import timedelta, datetime, timezone
+import os
+from pydantic import BaseModel
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives import hashes
+import base64
 
 router = APIRouter(prefix='/rapid',tags=['rapid'])
 
@@ -47,19 +53,13 @@ async def generate_token(data : dict, minutes : int):
         return {"status": "error","message": str(e)}
 
 @router.post('/decode-token')
-async def decode_token(token: str, validate: bool = False):
+async def decode_token(token: str):
     try:
-        
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         result = {
             "status": "success",
             "decoded_data": payload
         }
-        if validate:
-            validation_status = validate_token(payload)
-            result.update({'validation_status' : validation_status})
-            print(result)
-        return result
     except JWTError:
         return {"status": "failure", "message": "invalid or expired token"}
     except Exception as e:
@@ -72,35 +72,43 @@ async def create_access_token(data : dict, expires_delta: timedelta):
     encode.update({'exp': expires})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
-async def validate_token(payload: str):
-    if token is None:
-        return {"status" : "failure", "message" : "Token is missing"}
+class EncryptRequest(BaseModel):
+    data: str
 
-    # Remove 'Bearer ' prefix if present
-    if token.startswith("Bearer "):
-        token = token.replace("Bearer ", "")
+class DecryptRequest(BaseModel):
+    encrypted_data: str
+    key: str
 
+# Encrypt endpoint
+@router.post("/encrypt")
+def encrypt(req: EncryptRequest):
+    key = AESGCM.generate_key(bit_length=256)
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    ciphertext = aesgcm.encrypt(nonce, req.data.encode(), None)
+
+    combined = nonce + ciphertext  # concatenate nonce with ciphertext
+    return {
+        "encrypted_data": base64.b64encode(combined).decode(),
+        "key": base64.b64encode(key).decode()
+    }
+
+# Decrypt endpoint
+@router.post("/decrypt")
+def decrypt(req: DecryptRequest):
     try:
-        expire_time = payload.get('exp')
-        if expire_time:
-            exp_datetime = datetime.fromtimestamp(expire_time, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-            current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-            print(exp_datetime,current_time)
-            if current_time >= exp_datetime:
-                return {"status": "failure", "message": "Token has expired"}
-        username: str = payload.get('sub')
-        user_id: int = payload.get('id')
-        if username is None or user_id is None:
-            return {"status": "failure", "message": "could not validate user"}
-        return {"status": "success", 'username': username, 'id': user_id}
-    except JWTError:
-        return {"status": "failure", "message": "invalid or expired token"}
+        key = base64.b64decode(req.key)
+        combined = base64.b64decode(req.encrypted_data)
+
+        nonce = combined[:12]
+        ciphertext = combined[12:]
+
+        aesgcm = AESGCM(key)
+        plaintext = aesgcm.decrypt(nonce, ciphertext, None)
+
+        return {"data": plaintext.decode()}
     except Exception as e:
-        return {"status": "failure", "message": str(e)}
-
-
-
-
+        raise HTTPException(status_code=400, detail="Decryption failed: " + str(e))
 
 
 
