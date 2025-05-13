@@ -8,7 +8,7 @@ from auth import get_current_user
 import sql
 from sql import get_db_connection
 import test
-import jobs
+# import jobs
 import rapid
 
 app = FastAPI()
