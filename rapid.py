@@ -60,6 +60,7 @@ async def decode_token(token: str):
             "status": "success",
             "decoded_data": payload
         }
+        return result
     except JWTError:
         return {"status": "failure", "message": "invalid or expired token"}
     except Exception as e:
