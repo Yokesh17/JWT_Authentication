@@ -123,41 +123,44 @@ def decrypt(req: DecryptRequest):
         raise HTTPException(status_code=400, detail="Decryption failed: " + str(e))
 
 
-@router.post("/encrypt_file")
-async def encrypt_file(file: UploadFile = File(...)):
-    file_data = await file.read()
-    encrypted_data = fernet.encrypt(file_data)
+# @router.post("/encrypt_file")
+# async def encrypt_file(file: UploadFile = File(...)):
+#     file_data = await file.read()
+#     encrypted_data = fernet.encrypt(file_data)
 
-    return StreamingResponse(
-        BytesIO(encrypted_data),
-        media_type='application/octet-stream',
-        headers={"Content-Disposition": f"attachment; filename=e_{file.filename}"}
-    )
+#     return StreamingResponse(
+#         BytesIO(encrypted_data),
+#         media_type='application/octet-stream',
+#         headers={"Content-Disposition": f"attachment; filename=e_{file.filename}"}
+#     )
 
-@router.post("/decrypt_file")
-async def decrypt_file(file: UploadFile = File(...)):
-    try:
-        file_data = await file.read()
-        decrypted_data = fernet.decrypt(file_data)
+# @router.post("/decrypt_file")
+# async def decrypt_file(file: UploadFile = File(...)):
+#     try:
+#         file_data = await file.read()
+#         decrypted_data = fernet.decrypt(file_data)
 
-        return StreamingResponse(
-            BytesIO(decrypted_data),
-            media_type='application/octet-stream',
-            headers={"Content-Disposition": f"attachment; filename=d_{file.filename}"}
-        )
-    except Exception:
-        return {"error": "Decryption failed. Invalid key or corrupted file."}
+#         return StreamingResponse(
+#             BytesIO(decrypted_data),
+#             media_type='application/octet-stream',
+#             headers={"Content-Disposition": f"attachment; filename=d_{file.filename}"}
+#         )
+#     except Exception:
+#         return {"error": "Decryption failed. Invalid key or corrupted file."}
 
 
-KEY = urandom(32)  # Use a fixed key from env in production
+# KEY = urandom(32)  # Use a fixed key from env in production
+KEY = b'\xb5(\x9a[\xa447^t\xe3"\x93\xba\xffd\xbd\xedTln\xee\xa6\xf0Q\x93\xb3\xe4\xc1\x99C\xf1\x8e'
+print(KEY)
 CHUNK_SIZE = 1024 * 1024  # 1MB
 
 def get_cipher(iv, key=KEY):
     return Cipher(algorithms.AES(key), modes.CTR(iv), backend=default_backend())
 
-@router.post("/encrypt_files")
+@router.post("/encrypt_file")
 async def encrypt_file(file: UploadFile = File(...)):
     try:
+        print(KEY)
         CHUNK_SIZE = 64 * 1024  # 64KB chunks for better performance
         
         # Generate encryption components
@@ -185,7 +188,7 @@ async def encrypt_file(file: UploadFile = File(...)):
     except Exception as e:
         return {"error": str(e)}
 
-@router.post("/decrypt_files")
+@router.post("/decrypt_file")
 async def decrypt_file(file: UploadFile = File(...)):
     try:
         CHUNK_SIZE = 64 * 1024  # 64KB chunks for better performance
