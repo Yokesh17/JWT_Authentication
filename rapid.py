@@ -11,7 +11,9 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import Fernet
 from fastapi.responses import StreamingResponse, JSONResponse
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import base64
+from os import urandom
 from io import BytesIO
 
 
@@ -147,6 +149,72 @@ async def decrypt_file(file: UploadFile = File(...)):
         return {"error": "Decryption failed. Invalid key or corrupted file."}
 
 
+KEY = urandom(32)  # Use a fixed key from env in production
+CHUNK_SIZE = 1024 * 1024  # 1MB
+
+def get_cipher(iv, key=KEY):
+    return Cipher(algorithms.AES(key), modes.CTR(iv), backend=default_backend())
+
+@router.post("/encrypt_files")
+async def encrypt_file(file: UploadFile = File(...)):
+    try:
+        CHUNK_SIZE = 64 * 1024  # 64KB chunks for better performance
+        
+        # Generate encryption components
+        iv = os.urandom(16)
+        cipher = Cipher(algorithms.AES(KEY), modes.CTR(iv), backend=default_backend()).encryptor()
+        
+        # Create output buffer
+        output = BytesIO()
+        output.write(iv)  # Write IV at the start
+        
+        # Process file in chunks
+        while chunk := await file.read(CHUNK_SIZE):
+            encrypted_chunk = cipher.update(chunk)
+            output.write(encrypted_chunk)
+        
+        # Finalize encryption
+        output.write(cipher.finalize())
+        output.seek(0)
+        
+        return StreamingResponse(
+            output,
+            media_type='application/octet-stream',
+            headers={"Content-Disposition": f"attachment; filename=e_{file.filename}"}
+        )
+    except Exception as e:
+        return {"error": str(e)}
+
+@router.post("/decrypt_files")
+async def decrypt_file(file: UploadFile = File(...)):
+    try:
+        CHUNK_SIZE = 64 * 1024  # 64KB chunks for better performance
+        
+        # Read IV first
+        iv = await file.read(16)
+        cipher = Cipher(algorithms.AES(KEY), modes.CTR(iv), backend=default_backend()).decryptor()
+        
+        output = BytesIO()
+        
+        # Process remaining file in chunks
+        while chunk := await file.read(CHUNK_SIZE):
+            decrypted_chunk = cipher.update(chunk)
+            output.write(decrypted_chunk)
+        
+        # Finalize decryption
+        output.write(cipher.finalize())
+        output.seek(0)
+        
+        return StreamingResponse(
+            output,
+            media_type='application/octet-stream',
+            headers={"Content-Disposition": f"attachment; filename=d_{file.filename}"}
+        )
+    except Exception as e:
+        return {"error": str(e)}
+
+
+
 
 # Derive Fernet key from user password + salt
 def derive_key(password: str, salt: bytes) -> Fernet:
@@ -154,7 +222,7 @@ def derive_key(password: str, salt: bytes) -> Fernet:
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
-        iterations=100_000,
+        iterations=50_000,
         backend=default_backend()
     )
     key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
