@@ -209,7 +209,7 @@ async def encrypt_file(
         return StreamingResponse(
             output,
             media_type='application/octet-stream',
-            headers={"Content-Disposition": f"attachment; filename=encrypted_{file.filename}"}
+            headers={"Content-Disposition": f"attachment; filename=e_{file.filename}"}
         )
     except Exception as e:
         return JSONResponse(
@@ -261,7 +261,7 @@ async def decrypt_file(
         return StreamingResponse(
             output,
             media_type='application/octet-stream',
-            headers={"Content-Disposition": f"attachment; filename=decrypted_{file.filename}"}
+            headers={"Content-Disposition": f"attachment; filename=d_{file.filename}"}
         )
     except ValueError as ve:
         # This might happen if the file is too small or not properly formatted
@@ -303,7 +303,7 @@ async def lock_pdf(
         writer.add_page(page)
     writer.encrypt(password)
 
-    output_path = temp_input_path.replace(".pdf", "_locked.pdf")
+    output_path = temp_input_path.replace(".pdf", "_l.pdf")
     with open(output_path, "wb") as f:
         writer.write(f)
 
