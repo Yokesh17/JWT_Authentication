@@ -7,7 +7,7 @@ from starlette import status
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
-from sql import get_db_connection, execute_query, get_data, update ,algorithm, secret_key
+from superbase import get_db_connection, execute_query, get_data, update ,algorithm, secret_key
 from auth_checks import validate_user
 
 router = APIRouter(prefix='/auth', tags=['auth'])
